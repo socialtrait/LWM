@@ -244,11 +244,17 @@ def main(argv):
     
     JaxDistributedConfig.initialize(FLAGS.jax_distributed)
     set_random_seed(FLAGS.seed) 
+    
+    from time import time
 
     prompts = [{'input_path': FLAGS.input_file, 'question': FLAGS.prompt}]
     sampler = Sampler()
+    tic = time()
     output = sampler(prompts, FLAGS.max_n_frames)[0]
+    toc = time()
+    diff = toc-tic
     print(f"Question: {FLAGS.prompt}\nAnswer: {output}")
+    print(f"Took {diff:.4f} seconds")
 
 if __name__ == "__main__":
     run(main)
