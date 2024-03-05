@@ -17,3 +17,8 @@ ipdb
 imageio[ffmpeg]
 decord
 tiktoken
+python-dotenv
+uvicorn==0.27.1
+fastapi==0.110.0
+pydantic==2.6.3
+openai==1.13.3
