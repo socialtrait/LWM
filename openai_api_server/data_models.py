@@ -79,8 +79,8 @@ class UsageInfo(BaseModel):
 
 
 class BaseRequest(BaseModel):
-    # Additional parameters 
-    pass
+    # ID of file that the model can use as context for completion
+    context_file_id: Optional[str] = None
 
 
 class ChatCompletionRequest(BaseRequest):
@@ -230,3 +230,11 @@ class ModelCard(BaseModel):
 class ModelList(BaseModel):
     object: str = "list"
     data: List[ModelCard] = Field(default_factory=list)
+
+
+class FileObject(BaseModel):
+    id: str
+    filename: str
+    bytes: int
+    created_at: int
+    purpose: str

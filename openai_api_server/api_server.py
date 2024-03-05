@@ -2,6 +2,7 @@
 import os
 import subprocess
 import threading
+import uuid
 
 import asyncio
 import argparse
@@ -9,7 +10,11 @@ import fastapi
 import uvicorn
 from time import sleep, time
 from fastapi import Request, HTTPException, status
+from fastapi import FastAPI, File, Form, HTTPException, Path, UploadFile, status
 from fastapi.responses import JSONResponse
+
+from typing import List, Optional
+
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from openai_api_server.data_models import (
@@ -21,6 +26,7 @@ from openai_api_server.data_models import (
     ChatCompletionResponseChoice,
     ChatMessage,
     UsageInfo,
+    FileObject,
 )
 
 from openai.types.chat.chat_completion import (
@@ -164,6 +170,11 @@ app.add_exception_handler(Exception, general_exception_handler)
 async def health():
     return {"status": "ok"}
 
+
+########################
+# COMPLETION ENDPOINTS #
+########################
+
 @app.post("/completions")
 async def completion(request: CompletionRequest):
     logger.debug(request)
@@ -200,6 +211,138 @@ async def chat_completion(request: ChatCompletionRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+
+
+##################
+# FILE ENDPOINTS #
+##################
+
+
+# Your mock database for the example
+mock_database = []
+
+async def get_file_from_db(file_id: str):
+    for file in mock_database:
+        if file.id == file_id:
+            return file
+    return None
+
+async def list_files_from_db(purpose: Optional[str] = None):
+    if purpose:
+        return [file for file in mock_database if file.purpose == purpose]
+    return mock_database
+
+async def delete_file_from_db(file_id: str):
+    global mock_database
+    mock_database = [file for file in mock_database if file.id != file_id]
+
+async def create_file(file: UploadFile, purpose: str):
+    # Create a unique ID for the file
+    file_id = str(uuid.uuid4())
+
+    os.makedirs("temp_files", exist_ok=True)
+
+    # Define file path (for example purpose, you might want to save it somewhere specific)
+    file_location = f"temp_files/{file_id}_{file.filename}"
+
+    # Write the uploaded file to a new location
+    with open(file_location, "wb+") as file_object:
+        file_object.write(await file.read())  # Writing the file content to the local file system
+
+    # Assuming you have a function to get file size, or use os.path.getsize
+    file_size = os.path.getsize(file_location)
+
+    # Creating the file object that will be saved to your mock database
+    new_file = FileObject(
+        id=file_id,
+        filename=file.filename,
+        bytes=file_size,
+        created_at=int(time()), 
+        purpose=purpose
+    )
+
+    # Append the new file to your database (here, it's a mock database)
+    mock_database.append(new_file)
+
+    logger.debug(f"Uploaded file {file.filename} with id {file_id}")
+
+    # Return the file metadata
+    return new_file
+
+
+async def retrieve_file_content_from_db(file_id: str):
+    file = await get_file_from_db(file_id)
+    if file:
+        return {"content": file.bytes}
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="File not found",
+    )
+
+
+
+@app.post("/files", response_model=FileObject)
+async def upload_file(file: UploadFile = File(...), purpose: str = Form(...)):
+    try:
+        new_file = await create_file(file, purpose)
+        # Return the file metadata
+        return new_file
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+@app.get("/files", response_model=List[FileObject])
+async def list_files(purpose: Optional[str] = None):
+    try:
+        files = await list_files_from_db(purpose)
+        return files
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+@app.get("/files/{file_id}", response_model=FileObject)
+async def retrieve_file(file_id: str = Path(...)):
+    try:
+        file = await get_file_from_db(file_id)
+        if file:
+            return file
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+@app.delete("/files/{file_id}")
+async def delete_file(file_id: str = Path(...)):
+    try:
+        await delete_file_from_db(file_id)
+        return {"detail": "File deleted"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+@app.get("/files/{file_id}/content")
+async def retrieve_file_content(file_id: str = Path(...)):
+    try:
+        file_content = await retrieve_file_content_from_db(file_id)
+        return {"content": file_content}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
 
 
 def parse_args():
