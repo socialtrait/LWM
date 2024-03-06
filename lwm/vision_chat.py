@@ -237,24 +237,44 @@ class Sampler:
                 text = text.split(self.tokenizer.eos_token, maxsplit=1)[0]
             output_text.append(text)
         return output_text
-        
-def main(argv):
-    assert FLAGS.prompt != ''
-    assert FLAGS.input_file != ''
-    
+
+
+def set_up_sampler():
+
+    FLAGS.prompt = "What is the video about?"
+    #FLAGS.input_file = "/home/lukas/LWM/example_video.mp4"
+    FLAGS.vqgan_checkpoint = "/home/lukas/LWM-Chat-1M-Jax/vqgan"
+    FLAGS.mesh_dim = '!1,1,-1,1'
+    FLAGS.dtype = 'fp16'
+    FLAGS.load_llama_config = '7b'
+    FLAGS.max_n_frames = 8
+    FLAGS.update_llama_config = "dict(sample_mode='text',theta=50000000,max_sequence_length=131072,scan_attention=False,scan_query_chunk_size=128,scan_key_chunk_size=128,remat_attention='',scan_mlp=False,scan_mlp_chunk_size=2048,remat_mlp='',remat_block='',scan_layers=True)"
+    FLAGS.load_checkpoint = "params::/home/lukas/LWM-Chat-1M-Jax/params"
+    FLAGS.tokenizer.vocab_file = "/home/lukas/LWM-Chat-1M-Jax/tokenizer.model"
+
     JaxDistributedConfig.initialize(FLAGS.jax_distributed)
     set_random_seed(FLAGS.seed) 
-    
+
+    sampler = Sampler()
+    return sampler
+
+
+        
+def main(argv):
+
     from time import time
 
-    prompts = [{'input_path': FLAGS.input_file, 'question': FLAGS.prompt}]
-    sampler = Sampler()
-    tic = time()
-    output = sampler(prompts, FLAGS.max_n_frames)[0]
-    toc = time()
-    diff = toc-tic
-    print(f"Question: {FLAGS.prompt}\nAnswer: {output}")
-    print(f"Took {diff:.4f} seconds")
+    sampler = set_up_sampler()
+
+    while True:
+        prompt = input("Question: ")
+        prompts = [{'input_path': FLAGS.input_file, 'question': prompt}]
+        tic = time()
+        output = sampler(prompts, FLAGS.max_n_frames)[0]
+        toc = time()
+        diff = toc-tic
+        print(f"Answer: {output}")
+        print(f"Took {diff:.4f} seconds")
 
 if __name__ == "__main__":
     run(main)

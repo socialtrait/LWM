@@ -5,9 +5,9 @@ export PROJECT_DIR="$( cd -- "$( dirname -- "$SCRIPT_DIR" )" &> /dev/null && pwd
 cd $PROJECT_DIR
 export PYTHONPATH="$PYTHONPATH:$PROJECT_DIR"
 
-export llama_tokenizer_path="/home/lukas/LWM/LWM-Chat-1M-Jax/tokenizer.model"
-export vqgan_checkpoint="/home/lukas/LWM/LWM-Chat-1M-Jax/vqgan"
-export lwm_checkpoint="/home/lukas/LWM/LWM-Chat-1M-Jax/params"
+export llama_tokenizer_path="/home/lukas/LWM-Chat-1M-Jax/tokenizer.model"
+export vqgan_checkpoint="/home/lukas/LWM-Chat-1M-Jax/vqgan"
+export lwm_checkpoint="/home/lukas/LWM-Chat-1M-Jax/params"
 export input_file="/home/lukas/LWM/example_video.mp4"
 
 # Relevant params

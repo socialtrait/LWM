@@ -344,7 +344,6 @@ async def retrieve_file_content(file_id: str = Path(...)):
         )
 
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Mock OpenAI API server")
     parser.add_argument(
